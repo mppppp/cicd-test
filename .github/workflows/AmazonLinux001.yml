@@ -1,22 +1,18 @@
 # ワークフロー名(任意)
 name: AmazonLinux001
 
-# トリガーとなる GitHub イベント
 on:
-  # workflow_dispatchを指定しておくとGitHubのコンソールから実行可能になる
-  workflow_dispatch:
+ pull_request:
+   branches: [ main ]
+   types: [closed]
 
-# ワークフローの実行処理
+ workflow_dispatch:
+
 jobs:
-  # ジョブ名(任意)
-  build:
-    # ジョブが実行されるランナー(仮想デバイス)の種類
-    runs-on: ubuntu-latest
-    # タイムアウトの時間を設定しておく
-    timeout-minutes: 10
+ build:
+   runs-on: ubuntu-latest
+   steps:
 
-    # ジョブのステップ
-    steps:
      # IP取得ライブラリをインストール
      - name: Public IP Install
        id: ip
@@ -40,7 +36,7 @@ jobs:
        with:
          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-         aws-region: ap-northeast-3
+         aws-region: ap-northeast-1
 
      # デプロイする
      - name: Deploy
@@ -52,8 +48,7 @@ jobs:
          # SSH接続して、git pullする
          echo "${{ secrets.GIT_PRIVATE_KEY }}" > private_key
          chmod 600 private_key
-         ssh -oStrictHostKeyChecking=no ${{ secrets.EC2_USER_NAME }}@${{ secrets.EC2_HOST_NAME }} -i private_key "cd React && git pull origin main"
-         # 処理を実行
-         
+         ssh -oStrictHostKeyChecking=no ${{ secrets.EC2_USER_NAME }}@${{ secrets.EC2_HOST_NAME }} -i private_key "cd /var/www/html/ && git fetch --prune && git checkout main && git pull origin main"
+
          # SSHのセキュリティグループを閉じる
          aws ec2 revoke-security-group-ingress --group-id ${{ secrets.EC2_SECURITY_GROUP_ID }} --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
